@@ -10,7 +10,7 @@
 
 ## 2. Team Coordination
 
-- **Week 8 meeting date:** Sat, Sep 26 2026
+- **Week 6 meeting date:** Sat, Sep 26 2026
 - **Meeting time:** 1pm EDT
 - **Communication methods:** Zoom
 
