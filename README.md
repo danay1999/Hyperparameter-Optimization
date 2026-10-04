@@ -27,7 +27,7 @@ The pilot uses synthetic linear regression, Elastic Net, all four optimizers, se
 - `results/runs/`: one JSON per run with configuration, provenance, trial history, metrics, and status; excluded from Git.
 - `figures/`: exported plots; excluded from Git.
 
-Completed runs are skipped on rerun. Failed runs are saved and retried; interrupted runs restart from the beginning. Result files are written atomically. IDs include configuration, Git revision, and source hash. RS/BO derive both budgets from one trial history, refitting the best configuration for each budget separately. Scores in trial histories are maximization scores (negative RMSE for regression); summaries use positive RMSE. Generalization gaps are oriented so positive means worse test performance.
+Completed compatible experiment combinations are skipped on rerun, regardless of filename, code hash, or Git revision. Failed and interrupted runs are saved and restarted from the beginning; per-trial checkpoints preserve diagnostics but do not resume individual trials. Result files are written atomically after each trial and at completion. IDs include configuration, Git revision, and source hash. RS/BO derive both budgets from one trial history, refitting the best configuration for each budget separately. Scores in trial histories are maximization scores (negative RMSE for regression); summaries use positive RMSE. Generalization gaps are oriented so positive means worse test performance.
 
 ## Before the full study
 
@@ -40,7 +40,7 @@ This is a runnable foundation, not a frozen benchmark:
 - Classification PR performance is currently reported as average precision, explicitly named in the saved metrics.
 - Run the one-seed timing survey before launching all seeds. Statistical comparisons and publication plots remain to implement in the final analysis notebook.
 
-Use one batch process per results directory. Run-level resume is supported; simultaneous writers and trial-level resume are not yet supported.
+Use one batch process per results directory. Run-level resume is supported; simultaneous writers and trial-level resume are not supported.
 
 ## macOS LightGBM dependency
 
@@ -57,4 +57,23 @@ An Intel OpenMP library under `/usr/local` cannot satisfy an Apple Silicon Light
 
 Regression Elastic Net uses `max_iter=50000` and a shared `l1_ratio` range of 0.05–1.0. Classification settings are unchanged. Each trial records `converged` and `convergence_warnings`, including parallel CV workers; summaries record `best_trial_converged`, `refit_converged`, and `refit_convergence_warnings`. Trials with warnings remain in the search and should be reviewed before reporting results. Absence of convergence warnings is the criterion for these flags.
 
-Restart a running batch to load code or configuration changes. Source changes produce new run IDs, so previous completed runs remain on disk but are not skipped under the updated code. Keep analysis restricted to one `source_hash` and a consistent protocol; the current analysis loader includes all completed files, including older runs. Older files have no convergence diagnostics and should be treated as unknown, not converged.
+Restart a running batch to load code or configuration changes. Source changes produce new run IDs as provenance, but compatible completed combinations are reused. Keep analysis restricted to one `source_hash` and a consistent protocol; the current analysis loader includes all completed files, including older runs. Older files have no convergence diagnostics and should be treated as unknown, not converged.
+
+## Resume and CPU settings
+
+The default is `cv_jobs: 4` and `model_threads: 1`: up to four fold workers, each with one native thread. All four optimizers, including halving, use parallel CV. Trials remain sequential. Change settings in the configuration or pass `--cv-jobs` and `--model-threads`.
+
+```sh
+# Review remaining seed-1 work, explicitly accepting older model metadata:
+python scripts/run_experiments.py --seed 1 --dry-run --accept-legacy-results
+# Resume seed 1:
+python scripts/run_experiments.py --seed 1 --accept-legacy-results
+# Deliberately repeat a selected combination, preserving older files:
+python scripts/run_experiments.py --dataset synthetic_linear --model elastic_net --optimizer random --seed 1 --force
+```
+
+Resume requires the same dataset settings, search space, CV folds, protocol version, package versions, and (for new files) model settings. It also checks that all requested budget summaries and trial history exist. Parallel execution settings are recorded but do not invalidate predictive scores; timing comparisons must separate worker/thread settings. Expanding the requested budgets may rerun a random/Bayesian search if its older file lacks a requested summary.
+
+`--accept-legacy-results` is an explicit decision to trust missing model-setting metadata in older results. It bypasses only that missing metadata check, not other compatibility checks. Without this option, those combinations are rerun. Historical files may include different Elastic Net iteration limits or equivalent logistic APIs; audit them before making final statistical claims.
+
+`--dry-run` shows skip reasons and remaining counts without fitting or modifying results. `--force` bypasses skips and keeps previous files; duplicate outputs must be selected deliberately in analysis. Future scientific changes to preprocessing, split generation, or optimizer semantics must increment `protocol_version` in the runner; a source hash alone no longer controls reuse.

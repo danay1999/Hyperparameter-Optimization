@@ -1,6 +1,7 @@
 import time
 import sys
-from joblib import Parallel, delayed
+from joblib import Parallel, delayed, parallel_config
+from threadpoolctl import threadpool_limits
 from ..convergence import fit_with_diagnostics
 import numpy as np
 from scipy.stats import loguniform, uniform, randint
@@ -9,7 +10,7 @@ from sklearn.model_selection import ParameterGrid, ParameterSampler, train_test_
 from sklearn.metrics import get_scorer
 
 
-def optimize(estimator, space, optimizer, budget, X, y, folds, scoring, seed, n_jobs):
+def optimize(estimator, space, optimizer, budget, X, y, folds, scoring, seed, n_jobs, model_threads=1, progress=None):
     distributions = {}
     for key, spec in space.items():
         if 'choices' in spec:
@@ -24,7 +25,8 @@ def optimize(estimator, space, optimizer, budget, X, y, folds, scoring, seed, n_
     start = time.perf_counter()
 
     def fit_fold(params, train, valid):
-        fitted, diagnostics = fit_with_diagnostics(clone(estimator).set_params(**params), X.iloc[train], y.iloc[train])
+        with threadpool_limits(limits=model_threads):
+            fitted, diagnostics = fit_with_diagnostics(clone(estimator).set_params(**params), X.iloc[train], y.iloc[train])
         score = get_scorer(scoring)(fitted, X.iloc[valid], y.iloc[valid])
         return float(score), diagnostics
 
@@ -32,14 +34,20 @@ def optimize(estimator, space, optimizer, budget, X, y, folds, scoring, seed, n_
         if diagnostics:
             print(f"Convergence warning: {len(diagnostics)} fold fit(s) did not converge; diagnostics saved with trial.", file=sys.stderr, flush=True)
 
+    def evaluate_folds(params, trial_folds):
+        with parallel_config(backend='loky', inner_max_num_threads=model_threads):
+            return Parallel(n_jobs=n_jobs)(delayed(fit_fold)(params, train, valid) for train, valid in trial_folds)
+
     def evaluate(params):
         tick = time.perf_counter()
-        outcomes = Parallel(n_jobs=n_jobs)(delayed(fit_fold)(params, train, valid) for train, valid in folds)
+        outcomes = evaluate_folds(params, folds)
         score = float(np.mean([value for value, _ in outcomes]))
         diagnostics = [message for _, messages in outcomes for message in messages]
         report(diagnostics)
         trials.append(dict(params=params, score=score, seconds=time.perf_counter()-tick,
                            elapsed_seconds=time.perf_counter()-start, resource=1.0, converged=not diagnostics, convergence_warnings=diagnostics))
+        if progress:
+            progress(trials)
         return score
 
     if optimizer == 'bayesian':
@@ -104,20 +112,21 @@ def optimize(estimator, space, optimizer, budget, X, y, folds, scoring, seed, n_
                 if tree_resource:
                     params['model__n_estimators'] = max(1, int(full_trees * fraction))
                 tick = time.perf_counter()
-                scores = []
-                diagnostics = []
+                trial_folds = []
                 for train, valid in folds:
                     if not tree_resource and fraction < 1:
                         labels = y.iloc[train] if scoring == 'roc_auc' else None
                         train, _ = train_test_split(train, train_size=max(2, int(len(train)*fraction)),
                             random_state=seed, stratify=labels)
-                    value, messages = fit_fold(params, train, valid)
-                    scores.append(value)
-                    diagnostics.extend(messages)
-                score = float(np.mean(scores))
+                    trial_folds.append((train, valid))
+                outcomes = evaluate_folds(params, trial_folds)
+                diagnostics = [message for _, messages in outcomes for message in messages]
+                score = float(np.mean([value for value, _ in outcomes]))
                 report(diagnostics)
                 trials.append(dict(params=params, score=score, seconds=time.perf_counter()-tick,
                     elapsed_seconds=time.perf_counter()-start, resource=fraction, rung=rung, converged=not diagnostics, convergence_warnings=diagnostics))
+                if progress:
+                    progress(trials)
                 scored.append((score, params))
             candidates = [params for _, params in sorted(scored, key=lambda pair: pair[0], reverse=True)[:max(1, int(np.ceil(len(scored)/3)))]]
     else:
