@@ -48,13 +48,18 @@ Demographic, credit-limit, repayment-history, bill, and payment data for 30,000 
 
 ### 7. Synthetic datasets
 
-Generated with scikit-learn so that the true data-generating process is known and each condition can be varied independently:
+The study includes four synthetic datasets generated with scikit-learn. Each contains **2,000 observations and 20 numerical features**, with generation controlled by the repetition seed. They provide controlled settings for comparing optimizers under linearity, nonlinearity, and class imbalance.
 
-| Generator | Task | Controls |
-| --- | --- | --- |
-| `make_regression` | Regression, linear | `n_samples`, `n_features`, `n_informative`, `noise` |
-| `make_friedman1` | Regression, nonlinear | `n_samples`, `n_features` (5 informative), `noise` |
-| `make_classification` | Classification | `n_samples`, `n_features`, `n_informative`, `n_redundant`, `weights` (imbalance), `flip_y` (label noise), `class_sep` |
+| Dataset | Task | Generation settings | Purpose |
+|---|---|---|---|
+| **S1: Linear regression** | Regression | `make_regression`; 10 informative features, 10 non-informative features, Gaussian target noise with standard deviation 10 | Evaluate optimization when the underlying relationship is linear. |
+| **S2: Friedman regression** | Regression | `make_friedman1`; 5 informative features, 15 non-informative features, Gaussian target noise with standard deviation 1 | Evaluate optimization with nonlinear relationships and feature interactions. |
+| **S3: Balanced classification** | Binary classification | `make_classification`; 5 informative, 5 redundant, and 10 non-informative features; approximately equal class proportions | Provide a classification baseline with limited label noise. |
+| **S4: Imbalanced classification** | Binary classification | Same feature structure as S3, with nominal class proportions of 90% and 10% | Examine optimizer performance under class imbalance. |
+
+For both classification datasets, `flip_y=0.01` randomly reassigns approximately 1% of labels; this does not necessarily change every selected label. Consequently, realized class proportions may differ slightly from the nominal settings.
+
+Unlike the real datasets, the synthetic datasets are evaluated only in the **base condition**. Their generator noise is present before the train/test split and therefore affects both partitions. Each repetition generates a new dataset, then uses an 80/20 train/test split, stratified for classification. Within a repetition, every optimizer receives the same generated data, split, and cross-validation folds.
 
 ## Controlled variants
 
