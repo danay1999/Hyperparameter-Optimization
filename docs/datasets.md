@@ -69,6 +69,21 @@ Controlled versions of the real datasets isolate specific conditions:
 - **Regression noise:** Gaussian noise added to the features or the target of datasets 1–3.
 - **Classification noise:** random label flipping at fixed rates in datasets 4–6.
 
+## Analysis
+
+The study will include dataset analysis, explaining why the datasets provide different optimization challenges and quantofying how reliably the optimizers differ.
+
+| Analysis | What to include | Why it matters |
+| --- | --- | --- |
+| Dataset characteristics | Sample size, number of numerical/categorical features, missingness, feature-to-sample ratio | Explains differences in training cost and model behavior |
+| Target distribution | Regression: median, spread, skewness, outliers. Classification: class counts and proportions | Identifies difficult targets and class imbalance |
+| Feature relationships | Selected correlations, redundant features, categorical cardinality | Provides context for Elastic Net, SVM, and LightGBM behavior |
+| Experimental conditions | How sample size and training-label distributions change under `small` and `noisy` conditions | Demonstrates what the interventions actually changed |
+| Optimizer performance | Mean and standard deviation across seeds, paired score differences, uncertainty intervals | Shows the size and stability of performance differences |
+| Computational efficiency | Matched runtime ratios, budget gains, score-versus-time plots | Shows whether improved accuracy justifies additional computation |
+
+The study will include one compact summary table and a few representative plots. Large correlation matrices for every dataset would overwhelm the report; so we have to put detailed diagnostics in an appendix.
+
 ## Loading
 
 ```python
