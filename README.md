@@ -1,6 +1,6 @@
 # Hyperparameter Optimization
 
-Compare four search methods across 51 dataset–condition–model cells. Shared Python code runs the experiments; notebooks explore data and analyze saved results. See [the protocol](docs/experiments.md) and [the project proposal](Project%20Proposal.md).
+Compare four search methods across 51 dataset–condition–model cells. Shared Python code runs the experiments; notebooks explore data and analyze saved results. See [the protocol](docs/experiments.md) and [the project proposal](docs/Project%20Proposal.md).
 
 ## Setup and pilot
 
@@ -16,7 +16,7 @@ python scripts/run_experiments.py --pilot
 jupyter notebook notebooks/02_pilot_results.ipynb
 ```
 
-The pilot uses synthetic linear regression, Elastic Net, all four optimizers, seed 1, three CV folds, and budget 4. It requires no dataset download. The full manifest has 51 cells and 3,060 runs. Select subsets with `--dataset`, `--condition`, `--model`, `--optimizer`, and `--seed`.
+The pilot uses synthetic linear regression, Elastic Net, all four optimizers, seed 1, three CV folds, and budget 4. It requires no dataset download. The full manifest has 51 cells and 1,530 planned runs across five seeds. Select subsets with `--dataset`, `--condition`, `--model`, `--optimizer`, and `--seed`.
 
 ## Structure
 
@@ -38,7 +38,7 @@ This is a runnable foundation, not a frozen benchmark:
 - Halving uses three rungs with one-third elimination, fixed validation folds, and nested training subsets; LightGBM uses boosting rounds. Resource totals are logged as full-fidelity equivalents. This is a custom sequential adapter, not `HalvingRandomSearchCV`; calibrate schedules for budgets 25 and 100 and compare measured times before freezing the protocol. Boosting rounds are fixed by the resource schedule rather than independently searched.
 - Grid search grows a rectangular grid up to the budget; high-dimensional spaces necessarily leave some parameters at one value. Review those values and parameter priorities before benchmarking.
 - Classification PR performance is currently reported as average precision, explicitly named in the saved metrics.
-- Run the one-seed timing survey before launching all seeds. Statistical comparisons and publication plots remain to implement in the final analysis notebook.
+- Run the one-seed timing survey before launching all seeds. The final analysis notebook implements report figures, tables, and gated statistical comparisons; rerun it after the batch finishes.
 
 Use one batch process per results directory. Run-level resume is supported; simultaneous writers and trial-level resume are not supported.
 
@@ -77,3 +77,9 @@ Resume requires the same dataset settings, search space, CV folds, protocol vers
 `--accept-legacy-results` is an explicit decision to trust missing model-setting metadata in older results. It bypasses only that missing metadata check, not other compatibility checks. Without this option, those combinations are rerun. Historical files may include different Elastic Net iteration limits or equivalent logistic APIs; audit them before making final statistical claims.
 
 `--dry-run` shows skip reasons and remaining counts without fitting or modifying results. `--force` bypasses skips and keeps previous files; duplicate outputs must be selected deliberately in analysis. Future scientific changes to preprocessing, split generation, or optimizer semantics must increment `protocol_version` in the runner; a source hash alone no longer controls reuse.
+
+## Results-section outputs
+
+Run all cells in `notebooks/03_final_analysis.ipynb` to refresh `figures/final_analysis/`. It audits every saved file, archives all summaries, and compares optimizers within the largest compatible source cohort (or the explicit `SOURCE_HASH`). Historical cohorts are analyzed separately in the appendix rather than pooled with changed model/CPU settings.
+
+The notebook exports PNG/PDF figures, CSV tables, every matched high-budget search trajectory, a snapshot manifest, analysis environment metadata, `results_section_evidence.txt`, and `output_index.csv`. It covers performance, budget gains, runtime, seed variability, robustness, secondary metrics, quality–time tradeoffs, generalization, and convergence sensitivity. Formal tests remain deferred until planned paired coverage and convergence requirements pass; descriptive results can still be reported with those limitations.

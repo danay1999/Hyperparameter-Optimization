@@ -11,7 +11,7 @@ This document defines every combination of dataset, data condition, model, optim
 | Model | Elastic Net (EN), SVM with RBF kernel (SVM), LightGBM (LGBM) |
 | Optimizer | Grid search (GS), Random search (RS), Bayesian optimization (BO), Successive halving (SH) |
 | Budget | 25 and 100 full-fidelity evaluations |
-| Repetitions | 10 seeds |
+| Repetitions | 5 seeds (reduced from 10 because of compute time) |
 
 ## Datasets and conditions
 
@@ -28,7 +28,7 @@ This document defines every combination of dataset, data condition, model, optim
 
 Only the large datasets (D2, D4, D6) get a **Small** condition, because the others are already small.
 
-- **Small:** stratified random subsample of 2,000 rows (stratified on the class for classification, on target quantiles for regression). 2,000 roughly matches the size of D3.
+- **Small:** stratified random subsample of 2,000 training rows after the clean test split (stratified on the class for classification, on target quantiles for regression). 2,000 roughly matches the size of D3.
 - **Noisy (regression, D1–D3):** Gaussian noise with standard deviation 0.5 × SD(y) added to the target.
 - **Noisy (classification, D4–D6):** 10% of labels flipped at random.
 - Noise is added to the **training data only**. The test set stays clean, so test scores measure how well the tuned model recovers the true signal.
@@ -53,12 +53,12 @@ Synthetic datasets are run in the Base condition only. Their settings can be var
 
 All four optimizers use the same search space, data split, cross-validation folds, and budget within each run.
 
-| ID | Optimizer | Suggested implementation | How it uses the budget |
+| ID | Optimizer | Implemented adapter | How it uses the budget |
 | --- | --- | --- | --- |
-| GS | Grid search | `sklearn.model_selection.GridSearchCV` | A grid with at most *B* points. When the grid cannot cover every hyperparameter, it covers the most important ones and fixes the rest at defaults. |
-| RS | Random search | `sklearn.model_selection.RandomizedSearchCV` | *B* configurations sampled from the search space. |
+| GS | Grid search | Custom loop over `ParameterGrid` | A grid with at most *B* points. When the grid cannot cover every hyperparameter, it covers the most important ones and fixes the rest at defaults. |
+| RS | Random search | Custom loop over `ParameterSampler` | *B* configurations sampled from the search space. |
 | BO | Bayesian optimization | Optuna `TPESampler` | *B* sequential trials. |
-| SH | Successive halving | `sklearn.model_selection.HalvingRandomSearchCV` | Candidates and elimination factor chosen so the total resource spent is about *B* full-fidelity evaluations. The resource is training sample size for EN and SVM, and boosting rounds for LGBM. |
+| SH | Successive halving | Custom three-rung sequential adapter | Candidates and elimination factor chosen so the total resource spent is about *B* full-fidelity evaluations. The resource is training sample size for EN and SVM, and boosting rounds for LGBM. |
 
 ## Budgets
 
@@ -77,19 +77,19 @@ For RS and BO, the B = 25 result is the first 25 trials of the B = 100 run. Neit
 2. **Tuning:** 5-fold cross-validation (stratified for classification) on the training set, with the same folds for all optimizers.
 3. **Tuning objective:** RMSE for regression, ROC-AUC for classification.
 4. **Refit:** the best configuration is refit on the full training set and scored once on the test set.
-5. **Seeds:** repetition seeds 1–10 set the train/test split, CV folds, subsampling, noise, and optimizer randomness.
+5. **Seeds:** repetition seeds 1–5 set the train/test split, CV folds, subsampling, noise, and optimizer randomness.
 6. **Hardware:** all runs use the same machine type and the same `n_jobs` setting so that times are comparable.
 
 ### Logged for every run
 
-- Best validation score and test score (generalization gap = validation − test)
-- Secondary metrics on the test set: MAE (regression); F1, PR-AUC, and log loss (classification)
+- Best validation score and test score (generalization gap = test RMSE − validation RMSE, or validation ROC-AUC − test ROC-AUC)
+- Secondary metrics on the test set: MAE (regression); F1, average precision, and log loss (classification)
 - For every trial: configuration, CV score, resource used, and elapsed time, to build best-so-far curves against both number of trials and time
 - Total optimization time and number of configurations evaluated
 
 ## Run matrix
 
-Each ✓ is one dataset–condition–model cell. Every cell runs all four optimizers at both budgets for 10 seeds.
+Each ✓ is one dataset–condition–model cell. Every cell runs all four optimizers at both budgets for 5 seeds.
 
 | Dataset | Condition | Rows | EN | SVM | LGBM | Cells |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -120,17 +120,13 @@ Each ✓ is one dataset–condition–model cell. Every cell runs all four optim
 | --- | --- | --- |
 | Dataset–condition–model cells | from the run matrix | 51 |
 | Optimization runs per cell per seed | GS ×2, SH ×2, RS ×1, BO ×1 | 6 |
-| Optimization runs | 51 × 6 × 10 seeds | 3,060 |
+| Optimization runs | 51 × 6 × 5 seeds | 1,530 |
 | Full-fidelity evaluations per cell per seed | GS (25 + 100) + SH (25 + 100) + RS 100 + BO 100 | 450 |
-| Model fits (5-fold CV) | 51 × 450 × 10 × 5 | about 1.15 million |
+| Model fits (5-fold CV) | 51 × 450 × 5 × 5 | about 574,000 |
 
 Most fits are on 2,000–5,000 rows and take under a second. Most of the compute goes to the 12 large cells (D2, D4, D6 in the Base and Noisy conditions, EN and LGBM).
 
-**Before the full run,** we run one seed of every cell to measure time. If the total is too large, we cut compute in this order:
-
-1. Reduce seeds from 10 to 5 for the large cells only.
-2. Use 3-fold instead of 5-fold cross-validation for the large cells.
-3. Drop the Noisy condition for D4 and D6 (the noise effect is still measured on D1–D3 for regression and on D5 for classification).
+**Compute-time revision:** the original ten-seed design was reduced to five seeds for every cell. Five-fold CV, both budgets, and all configured conditions were retained. The counts above describe the planned five-seed design; they are not a statement that every compatible run has completed. Earlier files may contain additional seeds and different source/CPU settings, which the final notebook audits and analyzes separately.
 
 ## Optional extension: search-space dimension
 
