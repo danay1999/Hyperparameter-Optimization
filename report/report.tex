@@ -39,7 +39,7 @@
 \vspace{0.45in}
 {\large\bfseries Team: Optima Prime\par}
 \vspace{0.3in}
-{\large Danay Fernandes Alfonso\par}
+{\large Danay Fernandez Alfonso\par}
 \vspace{0.1in}
 {\large Dilek Ozdemirci\par}
 \vspace{0.1in}
@@ -48,19 +48,14 @@
 \clearpage
 \setcounter{page}{1}
 \title{\bfseries\fontsize{18}{22}\selectfont Budgeted Hyperparameter Optimization on Tabular Data: Predictive Performance, Computational Cost, and Robustness}
-\author{Danay Fernandes Alfonso, Dilek Ozdemirci, and Ecil Teodoro\\
+\author{Danay Fernandez Alfonso, Dilek Ozdemirci, and Ecil Teodoro\\
 \normalsize Team Optima Prime, MAP 6114 Machine Learning}
 \date{}
 \begingroup
 \singlespacing
 \maketitle
 \endgroup
-\begin{abstract}
-We compared four hyperparameter tuning methods on regression and classification tasks, using tabular data: grid search, random search, Bayesian optimization with a tree-structured Parzen estimator (TPE), and successive halving. We tuned three kinds of models: linear models, support vector machines (SVM) with a radial basis function (RBF) kernel, and LightGBM. The study covered 51 combinations of dataset, condition, and model. Each combination was run at two search budgets with a target of five seeds. We first planned ten seeds but cut it to five because the runs took too long. All saved searches added up to 164.70 hours on a 16-core Apple M4 Max with 128 GB of RAM. That total covers 1,614 unique completed runs from three versions of our code. The main analysis uses only one code version, which accounts for 135.72 hours and for 448 of the 510 planned comparisons that have results from all four optimizers. TPE had the best average rank in every model-budget group, and its lead was largest for SVM. For the linear models, though, the test scores were often almost the same no matter which optimizer we used. Halving did not reliably save time, and a bigger budget did not always give better test results. Adding label noise or shrinking the training set usually made predictions worse. Some comparisons are missing, some fits had convergence warnings, and the grids and resource use were not built the same way for every method. Because of this, we report the scores and costs we observed and do not claim that any optimizer is statistically better overall.
-\end{abstract}
-\noindent\textbf{Keywords:} 
-Hyperparameter optimization, random search, Bayesian optimization, successive halving, tabular learning, computational budgets.
-\par
+
 \section{Introduction}\label{introduction}
 
 Tuning hyperparameters often takes much longer than training a single model. A regularization strength, kernel setting, or tree setting that works well on one dataset can work badly on another. Our team wanted to see when a simple search is good enough and when an adaptive method is worth the extra effort.
@@ -85,11 +80,7 @@ Bergstra et al.~\cite{bergstra11} describe sequential methods that use past resu
 
 Jamieson and Talwalkar \cite{jamieson16} treat hyperparameter search as a problem of finding a good candidate while also deciding how much computing each candidate should get. This is the idea behind successive halving: try many candidates cheaply, then give more resources to the ones that look good. Whether it actually saves time depends in part on how well the early scores predict the final ones.
 
-Li et al.~\cite{li18} introduce Hyperband, which adds several choices about how many candidates to start with and how much to spend on each. Our code only uses one fixed three-stage halving schedule. We did not implement Hyperband's multiple brackets, so our halving results should not be read as Hyperband results.
-
 \subsection{Tuning, evaluation, and model choice}\label{tuning-evaluation-and-model-choice}
-
-Probst, Boulesteix, and Bischl \cite{probst19} looked at how much tuning actually helps different algorithms, and their work changed how we read our own ranks. In our Credit Default results, for example, all four optimizers got a linear-model AUC of about 0.71955. One of them still has to be ranked first, but that ``win'' means almost nothing in practice.
 
 Bischl et al.~\cite{bischl21} cover search algorithms, but also the practical side of tuning: evaluation, preprocessing, parameter ranges, and parallel runs. The point we took most directly from them was about preprocessing. If the median used to fill missing values or the mean used for standardizing is computed on the whole training set, the validation fold has already ``seen'' part of itself, and the CV score looks better than it should. So in our code, every fold computes these values from its own training part only. We also kept the test set completely out of parameter selection and saved the search settings for every run.
 
@@ -202,303 +193,6 @@ We also compare test performance and time using Pareto efficiency. In a matched 
 
 Some plots show differences relative to the absolute value of a reference score. A relative change in AUC is not the same as a change in AUC percentage points, and it also does not mean the same thing as a relative change in RMSE. We use these plots to describe the results, not as a shared effect-size scale.
 
-\section{Results}\label{results}
-
-\subsection{Available runs}\label{available-runs}
-
-The October 30 snapshot has 1,619 saved JSON files. Of these, 1,618 are marked complete and one was interrupted. They come from three versions of the source code. We keep the versions apart when comparing performance, because the execution settings changed between them and some older files are missing model and convergence details.
-
-The biggest eligible group, whose source hash starts with 5f5b6e60da15\ldots, is the one we use for the main analysis. We picked it because it had the most coverage, not because it was necessarily the newest. After removing duplicates, it has 1,345 completed runs and 1,793 budget summaries. Across all three versions there are 1,614 unique completed runs, and four of the completed files are just copies of other results.
-
-\begin{table}[t]
-\centering
-\caption{Available comparisons with all four optimizers in the main analysis group. Dataset counts include all model cells and budgets.}
-\label{tab:coverage}
-\fontsize{10}{12}\selectfont
-\setlength{\tabcolsep}{3.3pt}
-\begin{tabular}{lrr}
-\toprule
-Dataset & Available / planned & Coverage \\
-\midrule
-Bank Marketing & 56 / 70 & 80.0\% \\
-Bioresponse & 58 / 60 & 96.7\% \\
-Communities/Crime & 48 / 60 & 80.0\% \\
-Credit Default & 70 / 70 & 100.0\% \\
-Superconductivity & 56 / 70 & 80.0\% \\
-Balanced synthetic & 30 / 30 & 100.0\% \\
-Friedman & 30 / 30 & 100.0\% \\
-Imbalanced synthetic & 30 / 30 & 100.0\% \\
-Synthetic linear & 30 / 30 & 100.0\% \\
-White Wine & 40 / 60 & 66.7\% \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-We have 448 comparisons where all four optimizers are present, or 1,792 matched summaries, out of 510 planned groups. That is 87.8\% coverage. Among the dataset-condition-model-budget panels, 48 have all five seeds, 52 have four, and two have none. The two empty panels are White Wine Base SVM at both budgets. Those experiments do have older files, but no results in the main code-version group. One more primary summary does not have a full four-optimizer group, so we left it out of the comparison plots.
-
-Table III shows where the gaps are. The average ranks could change once more compatible results are added, so the current values only describe the comparisons we have.
-
-\subsection{Test performance}\label{test-performance}
-
-\begin{table}[t]
-\centering
-\caption{Average test ranks after grouping by dataset, with seven blocks per model-budget panel. Lower ranks are better.}
-\label{tab:ranks}
-\fontsize{10}{12}\selectfont
-\setlength{\tabcolsep}{3.3pt}
-\begin{tabular}{lrrrrr}
-\toprule
-Model & B & Grid & Random & TPE & Halving \\
-\midrule
-Linear & 25 & 2.473 & 2.642 & 2.158 & 2.728 \\
-Linear & 100 & 2.596 & 2.490 & 2.148 & 2.766 \\
-SVM & 25 & 3.164 & 2.839 & 1.650 & 2.346 \\
-SVM & 100 & 2.914 & 2.645 & 1.864 & 2.577 \\
-LightGBM & 25 & 3.320 & 2.282 & 2.088 & 2.310 \\
-LightGBM & 100 & 3.471 & 2.169 & 2.136 & 2.224 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-In Table IV, TPE has the best average rank in all six model-budget groups. The gap is biggest for SVM, where TPE's ranks are 1.650 at budget 25 and 1.864 at budget 100, while random search gets 2.839 and 2.645. For LightGBM at budget 100, TPE, random, and halving are close together, with ranks of 2.136, 2.169, and 2.224. Grid comes last for LightGBM at both budgets, but its limited grid and fixed 50 trees should be kept in mind when reading that result.
-
-\begin{figure}[!htbp]
-\centering
-\includegraphics[width=\textwidth]{figures/ranks.pdf}
-\caption{Average optimizer ranks across seven dataset blocks. Some cells have missing seeds. A rank does not show how large the score difference is.}
-\label{fig:ranks}
-\end{figure}
-
-\begin{table}[t]
-\centering
-\caption{Example Base-condition test scores at budget 100. Mean and standard deviation (SD) use the available seeds. Regression scores are RMSE; classification scores are ROC-AUC.}
-\label{tab:raw}
-\fontsize{10}{12}\selectfont
-\setlength{\tabcolsep}{3.3pt}
-\begin{tabular}{lrrrr}
-\toprule
-Dataset / model & Optimizer & Seeds & Mean & SD \\
-\midrule
-Synthetic linear / Linear & Grid & 5 & 10.23333 & 0.37028 \\
- & Random & 5 & 10.23416 & 0.34965 \\
- & TPE & 5 & 10.22446 & 0.36416 \\
- & Halving & 5 & 10.23428 & 0.35334 \\
-Synthetic linear / LightGBM & Grid & 5 & 46.78261 & 7.74061 \\
- & Random & 5 & 35.80414 & 5.19845 \\
- & TPE & 5 & 34.28479 & 6.47163 \\
- & Halving & 5 & 36.65876 & 7.04891 \\
-Friedman / LightGBM & Grid & 5 & 1.42058 & 0.02528 \\
- & Random & 5 & 1.29222 & 0.03576 \\
- & TPE & 5 & 1.27173 & 0.03614 \\
- & Halving & 5 & 1.33959 & 0.03195 \\
-Superconductivity / LightGBM & Grid & 4 & 9.72079 & 0.34208 \\
- & Random & 4 & 9.24376 & 0.31994 \\
- & TPE & 4 & 9.32176 & 0.40002 \\
- & Halving & 4 & 9.17557 & 0.34985 \\
-Credit Default / Linear & Grid & 5 & 0.71955 & 0.00511 \\
- & Random & 5 & 0.71955 & 0.00511 \\
- & TPE & 5 & 0.71955 & 0.00511 \\
- & Halving & 5 & 0.71955 & 0.00510 \\
-Bioresponse / LightGBM & Grid & 5 & 0.88306 & 0.00767 \\
- & Random & 5 & 0.88686 & 0.00643 \\
- & TPE & 5 & 0.88668 & 0.01162 \\
- & Halving & 5 & 0.88829 & 0.00945 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-The raw scores in Table V show that a better rank doesn't always mean a meaningful improvement. On synthetic linear regression with Elastic Net at budget 100, all four methods are within 0.010 RMSE of each other. TPE gets 10.224 and random search gets 10.234. On the same data, LightGBM gets an RMSE of 34.285 with TPE and 46.783 with grid. In this case, picking a model that fits the data matters a lot more than picking the optimizer. That grid result should also be read with its fixed tree count and limited parameter coverage in mind.
-
-For Friedman regression with LightGBM, TPE reaches an RMSE of 1.272, random search 1.292, halving 1.340, and grid 1.421. On Superconductivity Base the order is different: halving has the best mean LightGBM RMSE at 9.176, then random at 9.244 and TPE at 9.322. So TPE's better overall rank doesn't mean it wins on every dataset.
-
-The linear model on Credit Default Base shows an especially tiny difference, with all four AUC means at about 0.71955. We can still rank these scores, but the order says very little about any real improvement. Table V also gives the standard deviations across seeds, so the means can be read together with how much they vary.
-
-\subsection{What the larger budget changed}\label{what-the-larger-budget-changed}
-
-Going from a budget of 25 to 100 did not always improve the test predictions. For LightGBM on regression tasks, TPE improved RMSE in 29 of 38 matched budget pairs (76.3\%), with a median relative improvement of 1.27\%. Random search improved in 25 of 38 pairs (65.8\%), with the same median of 1.27\%. Halving improved in only 16 of 38 pairs (42.1\%), and its median gain was zero. Its budget-100 run is a completely separate search, so it doesn't necessarily keep the winning candidate from the smaller run.
-
-For LightGBM on classification, the median relative AUC gains go from 0.055\% for random search to 0.168\% for halving. These two improve in 25 of 47 and 31 of 47 matched pairs. For the linear models, the median gains are mostly zero or very close to zero. SVM grid search improves on classification in 25 of 29 pairs (86.2\%) but still has a worse average rank than TPE. Figure 2 shows both the improvements and the cases where results got worse.
-
-\begin{figure}[!htbp]
-\centering
-\includegraphics[width=\textwidth]{figures/budget.pdf}
-\caption{Test-score changes from budget 25 to 100, relative to the magnitude of the budget-25 score. Positive values mean improvement. Boxplots use the available matched groups, with outlier markers hidden. Relative AUC and RMSE changes have different interpretations.}
-\label{fig:budget}
-\end{figure}
-
-\subsection{Search time and total computing cost}\label{search-time-and-total-computing-cost}
-
-\begin{table}[t]
-\centering
-\caption{Median runtime relative to random search at budget 100, and the percentage of matched groups where each method is Pareto efficient.}
-\label{tab:time}
-\fontsize{10}{12}\selectfont
-\setlength{\tabcolsep}{3.3pt}
-\begin{tabular}{lrrrr}
-\toprule
-Model & Optimizer & Time / RS & Pareto & Groups \\
-\midrule
-Linear & Grid & 0.97 & 56.0\% & 84 \\
-Linear & Random & 1.00 & 48.8\% & 84 \\
-Linear & TPE & 1.00 & 61.9\% & 84 \\
-Linear & Halving & 2.59 & 17.9\% & 84 \\
-SVM & Grid & 1.04 & 29.1\% & 55 \\
-SVM & Random & 1.00 & 49.1\% & 55 \\
-SVM & TPE & 0.99 & 72.7\% & 55 \\
-SVM & Halving & 0.96 & 61.8\% & 55 \\
-LightGBM & Grid & 0.43 & 94.1\% & 85 \\
-LightGBM & Random & 1.00 & 74.1\% & 85 \\
-LightGBM & TPE & 1.14 & 61.2\% & 85 \\
-LightGBM & Halving & 2.75 & 35.3\% & 85 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-At budget 100, TPE takes about as long as random search for the linear models, with a median time ratio of 1.00. The ratio is 0.99 for SVM and 1.14 for LightGBM. Halving takes 2.59 times as long as random search for the linear models and 2.75 times as long for LightGBM. For SVM it is a little faster, with a ratio of 0.96. Table VI shows these matched ratios.
-
-So our halving schedule did not save time in general. Some likely reasons are the repeated fitting at each stage, the number of candidates evaluated, and the overhead of training on fractions of the data. Our saved results can't separate how much each of these contributes.
-
-LightGBM grid search only takes 0.43 times the random-search time at budget 100. But that speed comes with the worst average rank and the limited 50-tree grid we described earlier. Even so, grid is Pareto efficient in 94.1\% of matched groups, because being fast can make it a reasonable tradeoff. The numbers for the other methods are 74.1\% for random search, 61.2\% for TPE, and 35.3\% for halving. These percentages count matched seed groups, while the ranks in Table IV weight each dataset block equally. That difference in weighting is part of why the two don't give the same order.
-
-\begin{figure}[!htbp]
-\centering
-\includegraphics[width=\textwidth]{figures/runtime.pdf}
-\caption{Median search time relative to random search at budget 100. The dashed line marks equal time. Our halving schedule does not generally save elapsed time.}
-\label{fig:runtime}
-\end{figure}
-
-\subsubsection{Adding up the recorded time}\label{adding-up-the-recorded-time}
-
-To find the project's total recorded search time, we went through all 1,619 result files. After removing four byte-identical copies, we had 1,614 unique completed runs, plus one interrupted run that had no timing checkpoint. For each run \(i\), we took its last recorded cumulative time, \(T_i = \max_j t_{ij}\). If a run was missing trial timing, we used the largest optimization time among its budget summaries instead. Then we added up the run times:
-
-\[T_{\text{recorded}} = \sum_i T_i.\]
-
-We did not add up the cumulative timestamps inside a run, and we did not add both overlapping budget summaries for random search and TPE. The audit script checks duplicate run IDs against file-content hashes and keeps a list of every file it read.
-
-The total comes to 592,915.22 seconds, or 164.70 hours. That would be 6.86 days if all the recorded runs had been done one after another. The main five-seed group makes up 135.72 hours, and the older code versions make up 28.98 hours. We don't know how long the interrupted run took, so we did not count it as zero.
-
-The 164.70 hours should be read as a lower bound on the work, not as how long the project actually took. The script only counts time while a search was running, so things like downloading the data, the final refits, and runs that stopped before saving a checkpoint aren't in it. The one exception to the lower-bound reading is overlap: if two batches ran at the same time, their hours get added together even though they shared the same stretch of real time. We also want to be clear that these are elapsed hours, not CPU-hours.
-
-\begin{table}[t]
-\centering
-\caption{Recorded search time by dataset, including all conditions, models, budgets, and seeds. Main refers to the group used for performance analysis; All also includes older code versions. Duplicate copies are counted once.}
-\label{tab:total_dataset}
-\fontsize{10}{12}\selectfont
-\setlength{\tabcolsep}{3.3pt}
-\begin{tabular}{lrrr}
-\toprule
-Dataset & All hours & Main hours & Share of all \\
-\midrule
-Bioresponse & 130.26 & 113.56 & 79.09\% \\
-Bank Marketing & 13.39 & 8.02 & 8.13\% \\
-Superconductivity & 12.26 & 8.00 & 7.44\% \\
-Credit Default & 3.23 & 3.23 & 1.96\% \\
-White Wine & 2.98 & 0.57 & 1.81\% \\
-Communities/Crime & 1.46 & 1.22 & 0.89\% \\
-Balanced synthetic & 0.31 & 0.31 & 0.19\% \\
-Imbalanced synthetic & 0.30 & 0.30 & 0.18\% \\
-Friedman & 0.27 & 0.27 & 0.16\% \\
-Synthetic linear & 0.23 & 0.23 & 0.14\% \\
-Total & 164.70 & 135.72 & 100.00\% \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-Most of the time went to Bioresponse: 130.26 hours, or 79.09\% of the total. Bank Marketing took 13.39 hours (8.13\%) and Superconductivity took 12.26 hours (7.44\%). All four synthetic tasks together took only 1.11 hours. Table VII lists the other datasets and shows the main analysis group separately from the full archive.
-
-Bioresponse doesn't have many observations, but it has 1,776 source features. It is a good example of why a small dataset isn't always cheap to tune. The linear models used 104.74 hours on Bioresponse alone and 123.88 hours (75.22\%) across all datasets. From these totals we can't tell how much of that came from convergence problems or from particular parameter settings.
-
-\begin{table}[t]
-\centering
-\caption{Recorded search time by optimizer. Counts are unique completed runs. Grid and halving run separately at each budget; random search and TPE share their histories.}
-\label{tab:total_optimizer}
-\fontsize{10}{12}\selectfont
-\setlength{\tabcolsep}{3.3pt}
-\begin{tabular}{lrrrr}
-\toprule
-Search algorithm & Runs & All hours & Main hours & Share of all \\
-\midrule
-Grid & 538 & 49.37 & 39.88 & 29.98\% \\
-Random & 269 & 43.86 & 36.29 & 26.63\% \\
-Halving & 538 & 42.14 & 37.22 & 25.59\% \\
-TPE & 269 & 29.32 & 22.33 & 17.80\% \\
-Total & 1614 & 164.70 & 135.72 & 100.00\% \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-By search method, grid used 49.37 hours, random search 43.86 hours, halving 42.14 hours, and TPE 29.32 hours (Table VIII). These totals just describe the work we recorded. They are not a fair speed ranking of the optimizers. Grid and halving have separate runs for each budget, while random search and TPE share one history. Dataset coverage, the cost of each configuration, and execution settings also change between code versions. For comparing runtimes under the main setup, the matched ratios in Table VI are a better guide.
-
-\begin{table}[t]
-\centering
-\caption{Recorded search time by model family. Workloads differ, and SVM is excluded from the larger Base and Noisy conditions.}
-\label{tab:total_model}
-\fontsize{10}{12}\selectfont
-\setlength{\tabcolsep}{3.3pt}
-\begin{tabular}{lrrrr}
-\toprule
-Model family & Runs & All hours & Main hours & Share of all \\
-\midrule
-Linear & 624 & 123.88 & 100.64 & 75.22\% \\
-SVM & 420 & 25.17 & 22.65 & 15.28\% \\
-LightGBM & 570 & 15.64 & 12.44 & 9.50\% \\
-Total & 1614 & 164.70 & 135.72 & 100.00\% \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-By model family, the linear models used 123.88 hours, SVM 25.17 hours, and LightGBM 15.64 hours (Table IX). SVM was never run on the large Base and Noisy datasets, so its smaller total doesn't show that it scales better. The main five-seed group by itself took more than five days of back-to-back search time, which backs up our choice to cut the number of seeds. We have not tried to estimate an exact total for ten seeds, because the cost and coverage change from seed to seed and from cell to cell.
-
-\subsection{Noise and smaller training sets}\label{noise-and-smaller-training-sets}
-
-In the condition comparisons, the test set is always clean and stays the same. Adding noise to the training labels usually made test results worse, although a few individual comparisons got better. Those cases could just be random variation between repeats or a different configuration being picked by the search. They don't mean that corrupting labels helps in general.
-
-For regression, the median relative drop in performance from Base to Noisy goes from 0.67\% for TPE to 1.04\% for grid, with 56 matched comparisons per method. For classification, it goes from 0.67\% for grid to 1.02\% for TPE, with 64 comparisons per method.
-
-Using a smaller training set had a bigger effect on the regression results we have. The median relative drop goes from 12.32\% for grid to 18.99\% for halving, over 16 comparisons per method. All of these regression comparisons come from Superconductivity and the two model families that were run in both conditions, so they are not results from several independent regression datasets. For classification, the Small effects range from 1.81\% to 2.09\% over 36 comparisons per method. These pooled percentages mix repeated models, budgets, and tasks on different scales, so they should not be treated as standardized effects that can be compared directly across tasks.
-
-\begin{figure}[!htbp]
-\centering
-\includegraphics[width=\textwidth]{figures/robustness.pdf}
-\caption{Changes in clean-test performance after altering the training data. Positive values mean worse performance. Both budgets and available model cells are included; outlier markers are hidden. The Small regression comparisons use Superconductivity only.}
-\label{fig:robustness}
-\end{figure}
-
-\subsection{Other metrics and variation between seeds}\label{other-metrics-and-variation-between-seeds}
-
-The imbalanced synthetic SVM task is a good example of why the choice of metric matters. At budget 100, halving has the highest mean ROC-AUC (0.9419) and the lowest log loss (0.1435). TPE has the highest AP (0.7859) and F1 (0.6618). Random search gets an ROC-AUC of 0.9382, AP of 0.7742, F1 of 0.6492, and log loss of 0.1521. So the method with the best ROC-AUC isn't necessarily the best on AP, F1, or log loss, since each metric looks at a different part of prediction quality.
-
-The results also vary quite a bit across the five seeds. TPE's standard deviation is 0.1349 for AP and 0.1580 for F1, which is large next to the differences between the mean scores in this example. Seed variation includes both changes in the data split and randomness in the search, and for the synthetic tasks it also includes generating a new dataset. A standard deviation across seeds is not a confidence interval for one fixed dataset, and it doesn't show that two optimizers are equivalent. The tables that come with this paper keep the standard deviations and secondary metrics for every cell we have.
-
-\subsection{Search progress, generalization, and convergence}\label{search-progress-generalization-and-convergence}
-
-\begin{figure}[!htbp]
-\centering
-\includegraphics[width=\textwidth]{figures/trajectory.pdf}
-\caption{Best validation RMSE so far for Friedman regression with LightGBM, seed 1, budget 100. Only full-resource trials update the score, but time and resource totals include earlier low-resource work. This is one example, not a comparison of convergence rates across datasets.}
-\label{fig:trajectory}
-\end{figure}
-
-Figure 5 follows Friedman regression with LightGBM at seed 1 and budget 100. We picked it as an example of nonlinear regression, not because it was the best-looking seed. The curves show the best validation score found so far against cumulative resource and against elapsed time. For halving, only full-resource trials can change that score, but the earlier trials still count toward time and resource. We did not keep re-checking the test set to draw these curves. One example like this can't tell us which method converges faster in general, so the analysis exports 224 matched high-budget panels for a closer look.
-
-The saved generalization tables and validation-versus-test plots show gaps going both ways. For example, with LightGBM on Bioresponse Base, TPE's mean validation AUC is 0.8738 and its test AUC is 0.8867. On Credit Default Base, the same values are 0.7863 and 0.7806. Split variation and the selection process both affect these gaps. In the Noisy conditions, the difference between the corrupted validation labels and the clean test labels also plays a part.
-
-Out of the 1,793 summaries in the main group, 53 have a convergence warning on the selected trial and 37 have one on the final refit. That is 2.96\% and 2.06\% of the summaries, and all of them are in the linear-model family. These are not counts of separate failed searches, because both budgets can end up selecting the same trial. SVM and LightGBM have no warnings on selected trials or refits, although having no warnings doesn't prove a model reached the global optimum.
-
-The main results keep these completed fits and report the warnings. A separate sensitivity table only uses matched groups where every selected trial and refit passed the convergence checks. That way, readers can look at the warning-free comparisons without us quietly changing which results are in the main tables.
-
-\section{Discussion and Limitations}\label{discussion-and-limitations}
-
-The SVM results give the strongest reason to use TPE. The linear-model results give much less reason to put a lot of effort into any particular search method, since their raw scores are often almost the same even when their ranks are different. Random search is still a useful baseline. LightGBM shows bigger differences between methods on some nonlinear regression tasks, but which optimizer works best changes from dataset to dataset. Also, a better validation score doesn't guarantee a better test score.
-
-Some of the biggest differences come from how we set up the searches. Our grid keeps single-value numeric parameters at their lower bounds and fixes LightGBM at 50 trees. Halving goes up to 500 trees, while random search and TPE sample anywhere from 50 to 500. All methods use the same listed ranges, but they don't explore the same candidates or do the same amount of fitting per unit of budget. Our results describe the searches as we implemented them. A follow-up study should rethink which parameters the grid prioritizes and make the tree counts and resource choices more similar before blaming all of the difference on the search algorithm.
-
-Missing results are another limitation. We left out older code versions that had different or incomplete metadata, which made coverage uneven and left no White Wine Base SVM results in the main group. These gaps are not random. Filling in the compatible runs could change the average ranks. Five seeds also don't tell us much about variability, and repeated splits of one real dataset are not independent datasets. Our six real datasets were picked as examples, and the four synthetic tasks are related to each other. So the study can't show a general causal effect of search-space size, label noise, or optimizer choice.
-
-We can't fully trust the timing numbers either. Each run used four CV workers with one thread each, but we never checked whether anything else was running on the machine at the same time, so some runs could look slower than they really were. The times also only cover the search itself. Downloading the data and the final refits aren't counted. At one point we also got a warning when the parallel workers shut down. We never figured out what caused it, and we can't completely rule out that it affected something, though nothing points to a memory leak or a scoring bug. As for the convergence warnings, we left the 53 selected-trial and 37 refit warnings in the results and flagged them instead of quietly removing those runs.
-
-In practice, the real question is whether a score gain is big enough to be worth its cost and its variability. The Pareto results help describe that tradeoff after the fact, but choosing a model for new data still needs validation data. And since the classification metrics don't always agree, picking an optimizer also means knowing which kind of prediction quality matters for the task.
-
 \section{Timeline and Teamwork Plan}\label{timeline-and-teamwork-plan}
 
 We held our Week 6 meeting on Zoom on September 26, 2026. As of the October 30 snapshot, the repository has dataset loaders, preprocessing inside the CV folds, model factories, and all four search methods. It also has atomic checkpoints so saved results can't get corrupted, reuse of runs that already finished, convergence diagnostics, and a fully executed analysis notebook. The work was split among the three team members as described below.
@@ -523,43 +217,13 @@ Week 15 & Finalize the paper and team presentation. \\
 \end{tabular}
 \end{table}
 
-Table X shows the project milestones and the rest of the schedule. Ecil Teodoro did the coding. Danay Fernandes Alfonso chose the datasets and analyzed the results. Dilek Ozdemirci analyzed the results and wrote the documentation.
-
-\section{Conclusion}\label{conclusion}
-
-The main thing we learned is that a better rank is not the same as a better model. TPE did rank first in every group, and for SVM the gap was real: an average rank of 1.650 at budget 25 against 2.839 for random search. For the linear models, though, the ``winner'' was often decided by tiny differences, like the synthetic regression task where all four methods finished within 0.010 RMSE of each other. Two other results surprised us. Halving was supposed to save time, but at budget 100 it took about 2.6 to 2.75 times as long as random search for the linear models and LightGBM. And quadrupling the budget didn't reliably help either. For LightGBM on regression, halving improved in only 16 of 38 cases.
-
-The cost of computing is what makes these differences matter in practice. The saved searches took 164.70 hours, including 135.72 hours for the main five-seed group, on a 16-core Apple M4 Max with 128 GB of RAM. Because of this, we lowered the target from ten seeds to five. More search time paid off in some experiments, but in others the gains were so small that they would be hard to justify on accuracy alone. For the linear models, a simple search was usually enough. For SVM, TPE gave a better reason to use an adaptive method. For LightGBM, we had to pay closer attention to the dataset and to the configurations each search could actually reach.
-
-These conclusions are partial and descriptive, since some comparisons are missing, some linear-model fits have convergence warnings, and the LightGBM searches differ in tree count and parameter coverage. Within those limits, our study supports picking a search method based on how big and how consistent its test-score gains are compared to its cost. The method with the best rank is not automatically the most useful one if a simpler search gets almost the same predictions in less time.
-
-The October 30 snapshot used in this paper is missing 185 planned runs from the main code-version group. Most are seed-1 experiments: 42 for Bank Marketing, 36 for Communities and Crime, 42 for Superconductivity, and 30 for White Wine outside its Base SVM cell. White Wine Base SVM is missing all five seeds, accounting for another 30 runs. Bioresponse Base is missing five seed-1 linear-model searches; halving at budget 100 is already available. Credit Default and the synthetic tasks have complete coverage. A batch is now filling these gaps, but its new results are not yet included in this paper.
-
-To finish the project, we need to complete and check the compatible missing runs, review the linear-model convergence warnings, and rerun the analysis notebook on the expanded results. We also need to assess the LightGBM tree-count and grid-coverage differences and make any targeted reruns needed for a fairer comparison. Once the coverage and convergence requirements are met, we can run the planned Friedman tests, apply Holm correction, and carry out Nemenyi comparisons where appropriate. Finally, we must refresh the runtime audit, tables, figures, and report from the same results snapshot, revise the conclusions if the findings change, and prepare the final team presentation.
-
-\appendix
-\renewcommand{\thesection}{Appendix~\Alph{section}}
-\section{Reproducibility and Evidence Map}\label{appendix-a.-reproducibility-and-evidence-map}
-
-This paper uses the executed October 30 snapshot of \path{notebooks/03_final_analysis.ipynb}. Writing and rebuilding the report does not rerun any tuning or change any experiment results. The exported tables, trajectory data, manifest, and analysis environment are in \path{report/data/}. The manifest file, \path{snapshot_manifest.json}, lists the selected files and their checksums.
-
-The main source hash is 5f5b6e60\allowbreak{}da15ed1c\allowbreak{}5be07110\allowbreak{}bdfa0c11\allowbreak{}47b0502e\allowbreak{}e46a819f\allowbreak{}ca83e9e5\allowbreak{}d938fdb4. The older groups start with 46fbb8ce4e07 and 89a4645b7b3c. We keep them separate in the performance comparisons because their dataset coverage and execution or model records are different. The main experiments used NumPy 2.5.3, pandas 3.0.6, Scikit-learn 1.9.1, Optuna 5.0.0, and LightGBM 4.7.0. The analysis environment is recorded separately.
-
-The rank table (Table IV) comes from \path{table_03_average_ranks.csv}, the raw-score table (Table V) from \path{table_02_performance.csv}, and Table VI from \path{table_17_tradeoff_summary.csv}. Coverage and convergence counts come from tables 01 and 09. Budget changes are calculated from \path{budget_gains_per_cell_seed.csv}. Condition comparisons use table 12, secondary metrics use table 14, and historical run counts use table 21. The saved outputs also include generalization gaps, the warning-free sensitivity results, and raw differences from random search. The build script makes the paper's figures from this data and uses the same text and values for both the Markdown and LaTeX versions.
-
-To redo the time audit, run \path{python\ report/scan_runtime.py}. It reads the saved runs and writes \path{runtime_summary.json}, ledgers of files and unique runs, and timing tables by dataset, optimizer, model, seed, and code version into \path{report/data/}. Older searches count toward the project's recorded computing cost, but their scores are not mixed into the main performance analysis. If the results folder changes, the timing text and tables have to be updated together.
-
-To rebuild the report from the repository root, run \path{report/build_report.py} with Python in an environment that has pandas, NumPy, Matplotlib, Pandoc, and pdfLaTeX. The generated \path{report.tex} can also be compiled directly from \path{report/}. Input checksums are saved in \path{build_manifest.json}.
-
-The planned run count is \(51 \times 6 \times 5 = 1530\), and the planned summary count is \(51 \times 4 \times 2 \times 5 = 2040\). The 448 complete comparison groups contain 1,792 summaries, which gives coverage of \(448/510 = 87.8\%\). This is not the same as the share of completed files in the results folder. A legacy run that the runner can reuse is not automatically fit to be pooled into the analysis. Any new notebook snapshot means the paper has to be rebuilt and its numbers checked again.
+Table X shows the project milestones and the rest of the schedule. Ecil Teodoro did the coding. Danay Fernandez Alfonso chose the datasets and analyzed the results. Dilek Ozdemirci analyzed the results and wrote the documentation.
 
 \begin{thebibliography}{11}
 \interlinepenalty=10000
 \bibitem{bergstra12} J. Bergstra and Y. Bengio, "Random Search for Hyper-Parameter Optimization," Journal of Machine Learning Research, vol. 13, pp. 281-305, 2012. \href{https://jmlr.org/papers/v13/bergstra12a.html}{Online}.
 \bibitem{bergstra11} J. Bergstra, R. Bardenet, Y. Bengio, and B. Kegl, "Algorithms for Hyper-Parameter Optimization," Advances in Neural Information Processing Systems, vol. 24, 2011. \href{https://proceedings.neurips.cc/paper/2011/hash/86e8f7ab32cfd12577bc2619bc635690-Abstract.html}{Online}.
 \bibitem{jamieson16} K. Jamieson and A. Talwalkar, "Non-stochastic Best Arm Identification and Hyperparameter Optimization," Proceedings of AISTATS, PMLR, vol. 51, pp. 240-248, 2016. \href{https://proceedings.mlr.press/v51/jamieson16.html}{Online}.
-\bibitem{li18} L. Li, K. Jamieson, G. DeSalvo, A. Rostamizadeh, and A. Talwalkar, "Hyperband: A Novel Bandit-Based Approach to Hyperparameter Optimization," Journal of Machine Learning Research, vol. 18, no. 185, pp. 1-52, 2018. \href{https://jmlr.org/papers/v18/16-558.html}{Online}.
-\bibitem{probst19} P. Probst, A.-L. Boulesteix, and B. Bischl, "Tunability: Importance of Hyperparameters of Machine Learning Algorithms," Journal of Machine Learning Research, vol. 20, no. 53, pp. 1-32, 2019. \href{https://jmlr.org/papers/v20/18-444.html}{Online}.
 \bibitem{bischl21} B. Bischl et al., "Hyperparameter Optimization: Foundations, Algorithms, Best Practices and Open Challenges," arXiv:2107.05847v3, 2021. \href{https://arxiv.org/abs/2107.05847}{Online}.
 \bibitem{demsar06} J. Demsar, "Statistical Comparisons of Classifiers over Multiple Data Sets," Journal of Machine Learning Research, vol. 7, pp. 1-30, 2006. \href{https://jmlr.org/papers/v7/demsar06a.html}{Online}.
 \bibitem{ke17} G. Ke et al., "LightGBM: A Highly Efficient Gradient Boosting Decision Tree," Advances in Neural Information Processing Systems, vol. 30, 2017. \href{https://proceedings.neurips.cc/paper/2017/hash/6449f44a102fde848669bdd9eb6b76fa-Abstract.html}{Online}.
